@@ -36,6 +36,8 @@ model User {
   files   File[]   @relation("Tiene")
   folders Folder[] @relation("Tiene")
 
+  recoverPassword RecoverPassword[]
+
   @@map("users")
 }
 
@@ -82,4 +84,18 @@ model Folder {
   children Folder[] @relation("FolderHierarchy")
 
   @@map("folders")
+}
+
+model RecoverPassword {
+  recoverId Int      @id @default(autoincrement()) @map("recover_id")
+  codeHash  String   @map("code_hash")
+  createdAt DateTime @default(now()) @map("created_at")
+  attempts  Int      @default(0)
+  isUsed    Boolean  @default(false) @map("is_used")
+  expiresAt DateTime @map("expires_at")
+
+  user   User @relation(fields: [userId], references: [userId])
+  userId Int  @map("user_id")
+
+  @@map("recover_password")
 }
