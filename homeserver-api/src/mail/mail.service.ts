@@ -11,7 +11,7 @@ export class MailService {
     const { error } = await this.resend.emails.send({
       from: 'AM Cloud Server <onboarding@resend.dev>',
       to: ['sergioac.madrid@hotmail.com'] /* user.email */,
-      subject: `New Mail From ${user.name}`,
+      subject: `Welcome to AM CLOUD SERVER, ${user.name}!`,
       /* react: WelcomeEmail(user), */
       html: welcomeTemplate(user),
     });
