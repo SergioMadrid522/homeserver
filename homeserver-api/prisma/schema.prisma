@@ -33,11 +33,12 @@ model User {
   currentStorage BigInt    @default(0) @map("current_storage")
   profilePicture String?   @map("profile_picture")
   deletedAt      DateTime? @map("deleted_at")
+  emailVerified  Boolean   @default(false) @map("email_verified")
 
   files              File[]              @relation("Tiene")
   folders            Folder[]            @relation("Tiene")
   recoverPasswords   RecoverPassword[]
-  EmailVerifications EmailVerification[]
+  emailVerifications EmailVerification[]
 
   @@map("users")
 }
