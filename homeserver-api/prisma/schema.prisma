@@ -4,8 +4,8 @@
 // Get a free hosted Postgres database in seconds: `npx create-db`
 
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
   moduleFormat = "cjs"
 }
 
@@ -34,10 +34,10 @@ model User {
   profilePicture String?   @map("profile_picture")
   deletedAt      DateTime? @map("deleted_at")
 
-  files   File[]   @relation("Tiene")
-  folders Folder[] @relation("Tiene")
-
-  recoverPassword RecoverPassword[]
+  files              File[]              @relation("Tiene")
+  folders            Folder[]            @relation("Tiene")
+  recoverPasswords   RecoverPassword[]
+  EmailVerifications EmailVerification[]
 
   @@map("users")
 }
@@ -101,3 +101,15 @@ model RecoverPassword {
   @@map("recover_password")
 }
 
+model EmailVerification {
+  verificationId Int      @id @default(autoincrement()) @map("verification_id")
+  tokenHash      String   @map("token_hash")
+  createdAt      DateTime @default(now()) @map("created_at")
+  expiresAt      DateTime @map("expires_at")
+  isUsed         Boolean  @default(false) @map("is_used")
+
+  user   User @relation(fields: [userId], references: [userId])
+  userId Int  @map("user_id")
+
+  @@map("email_verification")
+}
