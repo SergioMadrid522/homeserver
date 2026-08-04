@@ -1,12 +1,12 @@
 import { Response, CookieOptions } from 'express';
-import { escape } from 'querystring';
 
 export async function setAuthCookie(res: Response, token: string) {
   const options: CookieOptions = {
     httpOnly: true,
-    secure: true,
-    maxAge: 3600000,
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 2 * 60 * 60 * 1000, //2h
+    sameSite: 'lax',
+    path: '/',
   };
-
-  res.cookie('token', token, options);
+  res.cookie('sessionCookie', token, options);
 }

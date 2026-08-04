@@ -17,9 +17,5 @@ export async function comparePassword(
 ): Promise<boolean> {
   const isPasswordMatch = await bcrypt.compare(bodyPassword, password);
 
-  if (!isPasswordMatch) {
-    throw new ConflictException('Contraseñas invalidas');
-  }
-
   return isPasswordMatch;
 }

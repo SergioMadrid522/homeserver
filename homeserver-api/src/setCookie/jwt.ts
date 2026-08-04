@@ -1,8 +1,13 @@
 import * as jose from 'jose';
 import 'dotenv/config';
 
-const SECRET = process.env.JWT_SECRET;
-const secret = new TextEncoder().encode(SECRET);
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET is not defined');
+}
+
+const secret = new TextEncoder().encode(JWT_SECRET);
 
 export async function signJwt(payload: Record<string, unknown>) {
   return new jose.SignJWT(payload)
