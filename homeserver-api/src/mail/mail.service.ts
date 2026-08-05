@@ -10,7 +10,7 @@ export class MailService {
 
   async welcomeEmail(user: CreatedUser) {
     const { error } = await this.resend.emails.send({
-      from: 'AM Cloud Server <onboarding@resend.dev>',
+      from: 'AMCloud Server <onboarding@resend.dev>',
       to: ['sergioac.madrid@hotmail.com'] /* user.email */,
       subject: `Welcome to AM CLOUD SERVER, ${user.name}!`,
       /* react: WelcomeEmail(user), */
@@ -24,7 +24,7 @@ export class MailService {
 
   async forgotPasswordMail(email: string, verificationCode: string) {
     const { error } = await this.resend.emails.send({
-      from: 'AM Cloud Server <onboarding@resend.dev>',
+      from: 'AMCloud Server <onboarding@resend.dev>',
       to: ['sergioac.madrid@hotmail.com'] /* user.email */,
       subject: `Solicitud de recuperación de contraseña`,
       html: forgotPasswordTemplate(verificationCode),

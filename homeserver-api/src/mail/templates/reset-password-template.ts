@@ -64,7 +64,7 @@ export function forgotPasswordTemplate(verificationCode: string) {
                           text-transform: uppercase;
                         "
                       >
-                        AM Cloud Server
+                        AMCloud Server
                       </p>
 
                       <p
@@ -126,7 +126,7 @@ export function forgotPasswordTemplate(verificationCode: string) {
                 >
                   Recibimos una solicitud para cambiar la contraseña de tu
                   cuenta en
-                  <strong style="color: #374151">AM Cloud Server</strong>.
+                  <strong style="color: #374151">AMCloud Server</strong>.
                 </p>
 
                 <p
@@ -303,7 +303,7 @@ export function forgotPasswordTemplate(verificationCode: string) {
                           font-weight: bold;
                         "
                       >
-                        AM Cloud Server
+                        AMCloud Server
                       </p>
 
                       <p
