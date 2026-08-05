@@ -8,9 +8,7 @@ import { SignUpDto } from './DTO/sign-up.dto';
 import { comparePassword, hashPassword } from 'src/utils/password.util';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { MailService } from 'src/mail/mail.service';
-import { getLocalFormattedDate } from 'src/utils/date.util';
 import { capitalizeFirstletter } from 'src/utils/capitalize-first-letter';
-import { CreatedUser, User } from 'src/types/user.types';
 import { LoginDto } from './DTO/login.dto';
 import { Response } from 'express';
 import { setAuthCookie } from 'src/setCookie/set-session-cookie';
@@ -79,6 +77,7 @@ export class AuthService {
     });
 
     setAuthCookie(response, token);
+
     return {
       success: true,
       message: 'Se ha iniciado sesión con éxito.',
@@ -116,5 +115,9 @@ export class AuthService {
     return {
       message: 'Cuenta creada exitosamente. Por favor checa tu email.',
     };
+  }
+
+  logout(res: Response) {
+    res.clearCookie('sessionCookie');
   }
 }

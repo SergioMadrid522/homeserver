@@ -22,15 +22,18 @@
     "email:dev": "email dev -d ./src/mail/templates"
   },
   "dependencies": {
+    "@nest-lab/throttler-storage-redis": "^1.2.0",
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/throttler": "^6.5.0",
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
     "@react-email/components": "^1.0.12",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
+    "ioredis": "^6.0.0",
     "jose": "^6.2.7",
     "pg": "^8.22.0",
     "reflect-metadata": "^0.2.2",
