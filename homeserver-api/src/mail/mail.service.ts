@@ -3,6 +3,7 @@ import { Resend } from 'resend';
 import { CreatedUser } from 'src/types/user.types';
 import { welcomeTemplate } from './templates/welcome-template';
 import { forgotPasswordTemplate } from './templates/reset-code-template';
+import { resetPassword } from './templates/reset-password-template';
 
 @Injectable()
 export class MailService {
@@ -13,7 +14,6 @@ export class MailService {
       from: 'AMCloud Server <onboarding@resend.dev>',
       to: ['sergioac.madrid@hotmail.com'] /* user.email */,
       subject: `Welcome to AM CLOUD SERVER, ${user.name}!`,
-      /* react: WelcomeEmail(user), */
       html: welcomeTemplate(user),
     });
 
@@ -25,9 +25,22 @@ export class MailService {
   async forgotPasswordMail(email: string, verificationCode: string) {
     const { error } = await this.resend.emails.send({
       from: 'AMCloud Server <onboarding@resend.dev>',
-      to: ['sergioac.madrid@hotmail.com'] /* user.email */,
+      to: ['sergioac.madrid@hotmail.com'] /* email */,
       subject: `Solicitud de recuperación de contraseña`,
       html: forgotPasswordTemplate(verificationCode),
+    });
+
+    if (error) {
+      throw new ConflictException('No se pudo enviar el correo.');
+    }
+  }
+
+  async resetPasswordMail(email: string) {
+    const { error } = await this.resend.emails.send({
+      from: 'AMCloud Server <onboarding@resend.dev>',
+      to: ['sergioac.madrid@hotmail.com'] /* email */,
+      subject: `Cambio de contraseña exitoso`,
+      html: resetPassword(),
     });
 
     if (error) {

@@ -6,6 +6,7 @@ import type { Response } from 'express';
 import { ForgotPasswordDto } from './DTO/forgot-password.dto';
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { VerifyResetCodeDto } from './DTO/verify-reset-code.dto';
+import { ResetPasswordDto } from './DTO/reset-password.dto';
 
 @SkipThrottle()
 @Controller('/auth')
@@ -41,5 +42,7 @@ export class AuthController {
   }
 
   @Post('/reset-password')
-  resetPassword() {}
+  resetPassword(@Body() credentials: ResetPasswordDto) {
+    return this.authService.resetPassword(credentials);
+  }
 }

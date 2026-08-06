@@ -20,10 +20,11 @@ import { ForgotPasswordDto } from './DTO/forgot-password.dto';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { VerifyResetCodeDto } from './DTO/verify-reset-code.dto';
+import { ResetPasswordDto } from './DTO/reset-password.dto';
 
 @Injectable()
 export class AuthService {
-  private resetToken;
+  private resetToken!: string;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -60,7 +61,18 @@ export class AuthService {
     });
   }
 
+  private checkToken(token: string) {
+    try {
+      const payload = this.jwtService.verify(token);
+
+      return { expired: false, payload };
+    } catch (error: any) {
+      return { expired: true, message: error.message };
+    }
+  }
+
   async login(credentials: LoginDto, response: Response) {
+    console.log(this.resetToken);
     const registeredUser = await this.prisma.user.findUnique({
       where: { email: credentials.email },
       select: {
@@ -212,6 +224,7 @@ export class AuthService {
 
     return {
       status: 200,
+      verificationCode,
       message: genericMessage,
     };
   }
@@ -250,16 +263,58 @@ export class AuthService {
       throw new ConflictException('Código incorrecto.');
     }
 
-    await this.prisma.recoverPassword.updateMany({
-      where: { userId: user?.userId },
-      data: { isUsed: true },
-    });
+    const currentDate = new Date();
+
+    if (code.expiresAt < currentDate) {
+      await this.prisma.recoverPassword.deleteMany({
+        where: { userId: user?.userId },
+      });
+      throw new NotFoundException(
+        'Este código ya caduco, genere un nuevo código',
+      );
+    }
 
     this.resetToken = this.generateResetToken(user?.email!);
     console.log(this.resetToken);
 
+    await this.prisma.recoverPassword.deleteMany({
+      where: { userId: user?.userId },
+    });
+
     return {
       status: 200,
+    };
+  }
+
+  async resetPassword(credentials: ResetPasswordDto) {
+    if (credentials.newPassword !== credentials.validateNewPassword) {
+      throw new BadRequestException('Las contraseñas no coinciden');
+    }
+
+    if (
+      credentials.newPassword.length < 8 ||
+      credentials.validateNewPassword.length < 8
+    ) {
+      throw new BadRequestException('La contraseña es muy corta.');
+    }
+
+    const passwordHash = await hashPassword(credentials.newPassword);
+
+    const isTokenValid = this.checkToken(this.resetToken);
+
+    if (isTokenValid.expired) {
+      throw new NotFoundException('Por favor genere un código nuevo.');
+    }
+
+    await this.prisma.user.update({
+      where: { email: credentials.email },
+      data: { passwordHash },
+    });
+
+    this.mail.resetPasswordMail(credentials.email);
+
+    return {
+      message: 'La contraseña se ha cambiado con éxito.',
     };
   }
 }
