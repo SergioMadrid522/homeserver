@@ -1,4 +1,4 @@
-import { Body, Controller, Param, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Param, Post, Query, Req, Res } from '@nestjs/common';
 import { SignUpDto } from './DTO/sign-up.dto';
 import { AuthService } from './auth.service';
 import { LoginDto } from './DTO/login.dto';
@@ -42,6 +42,11 @@ export class AuthController {
   @Post('/verify-reset-code')
   verifyResetCode(@Body() body: VerifyResetCodeDto) {
     return this.authService.verifyResetCode(body);
+  }
+
+  @Post('/verify-email')
+  verifyEmail(@Query('token') token: string) {
+    return this.authService.verifyEmail(token);
   }
 
   @Post('/reset-password')

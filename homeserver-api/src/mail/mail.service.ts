@@ -9,12 +9,12 @@ import { resetPassword } from './templates/reset-password-template';
 export class MailService {
   private readonly resend = new Resend(process.env.RESEND_API_KEY);
 
-  async welcomeEmail(user: CreatedUser) {
+  async welcomeEmail(user: CreatedUser, linkToVerifyEmail: string) {
     const { error } = await this.resend.emails.send({
       from: 'AMCloud Server <onboarding@resend.dev>',
       to: ['sergioac.madrid@hotmail.com'] /* user.email */,
       subject: `Welcome to AM CLOUD SERVER, ${user.name}!`,
-      html: welcomeTemplate(user),
+      html: welcomeTemplate(user, linkToVerifyEmail),
     });
 
     if (error) {

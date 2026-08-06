@@ -24,7 +24,7 @@ import { ResetPasswordDto } from './DTO/reset-password.dto';
 
 @Injectable()
 export class AuthService {
-  private resetToken!: string;
+  private tempToken!: string;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -53,11 +53,19 @@ export class AuthService {
     return code;
   }
 
-  private generateResetToken(email: string) {
+  private generateResetPasswordToken(email: string) {
     const payload = { email };
     return this.jwtService.sign(payload, {
       secret: process.env.RESET_PASSWORD_SECRET,
       expiresIn: '5m',
+    });
+  }
+
+  private generateEmailVerificationToken(email: string) {
+    const payload = { email };
+    return this.jwtService.sign(payload, {
+      secret: process.env.EMAIL_VERIFICATION_SECRET,
+      expiresIn: '24h',
     });
   }
 
@@ -144,6 +152,7 @@ export class AuthService {
         passwordHash,
       },
       select: {
+        userId: true,
         name: true,
         lastname: true,
         email: true,
@@ -151,9 +160,27 @@ export class AuthService {
       },
     });
 
-    this.mail.welcomeEmail(createdUser);
+    const verificationToken = this.generateEmailVerificationToken(email);
+
+    const tokenHash = await bcrypt.hash(verificationToken, 10);
+
+    // add 24 hours to the current time
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    await this.prisma.emailVerification.create({
+      data: {
+        tokenHash,
+        expiresAt,
+        user: { connect: { userId: createdUser.userId } },
+      },
+    });
+
+    const linkToVerifyEmail = `${process.env.FRONTEND_URL}/verify-email?token=${encodeURIComponent(verificationToken)}`;
+
+    //this.mail.welcomeEmail(createdUser, linkToVerifyEmail);
 
     return {
+      url: `http://192.168.0.21:3001/auth/verify-email?token=${encodeURIComponent(verificationToken)}`,
       message: 'Cuenta creada exitosamente. Por favor checa tu email.',
     };
   }
@@ -297,7 +324,7 @@ export class AuthService {
       );
     }
 
-    this.resetToken = this.generateResetToken(user?.email!);
+    this.tempToken = this.generateResetPasswordToken(user?.email!);
 
     await this.prisma.recoverPassword.deleteMany({
       where: { userId: user?.userId },
@@ -305,6 +332,89 @@ export class AuthService {
 
     return {
       status: 200,
+    };
+  }
+
+  async verifyEmail(token: string) {
+    let payload: { email?: string };
+
+    try {
+      payload = await this.jwtService.verifyAsync(token, {
+        secret: process.env.EMAIL_VERIFICATION_SECRET,
+      });
+    } catch {
+      throw new BadRequestException(
+        'El enlace de verificación es inválido o ha expirado.',
+      );
+    }
+
+    if (typeof payload.email !== 'string') {
+      throw new BadRequestException('El token no contiene un correo válido.');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: {
+        email: payload.email,
+      },
+      select: {
+        userId: true,
+        emailVerified: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('No se encontró la cuenta.');
+    }
+
+    if (user.emailVerified) {
+      throw new ConflictException('Este correo ya fue verificado.');
+    }
+
+    const validation = await this.prisma.emailVerification.findFirst({
+      where: {
+        userId: user.userId,
+      },
+      orderBy: {
+        verificationId: 'desc',
+      },
+    });
+
+    if (!validation) {
+      throw new NotFoundException(
+        'Esta cuenta no tiene un token de verificación asociado.',
+      );
+    }
+
+    if (validation.isUsed) {
+      throw new ConflictException('Este token ya fue utilizado.');
+    }
+
+    const expiresAt = new Date();
+
+    if (validation.expiresAt < expiresAt) {
+      throw new BadRequestException('Este enlace de verificación ha expirado.');
+    }
+
+    const isMatch = await bcrypt.compare(token, validation.tokenHash);
+
+    if (!isMatch) {
+      throw new BadRequestException('Token inválido.');
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { userId: user.userId },
+        data: { emailVerified: true },
+      }),
+
+      this.prisma.emailVerification.update({
+        where: { verificationId: validation.verificationId },
+        data: { isUsed: true },
+      }),
+    ]);
+
+    return {
+      message: 'Email verificado, ya puede iniciar sesión.',
     };
   }
 
@@ -322,7 +432,7 @@ export class AuthService {
 
     const passwordHash = await hashPassword(credentials.newPassword);
 
-    const isTokenValid = this.checkToken(this.resetToken);
+    const isTokenValid = this.checkToken(this.tempToken);
 
     if (isTokenValid.expired) {
       throw new NotFoundException('Por favor genere un código nuevo.');

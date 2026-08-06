@@ -1,7 +1,7 @@
 import { CreatedUser } from 'src/types/user.types';
 import { getLocalFormattedDate } from 'src/utils/date.util';
 
-export function welcomeTemplate(user: CreatedUser) {
+export function welcomeTemplate(user: CreatedUser, linkToVerifyEmail: string) {
   return `
     <html lang="es">
   <body
@@ -385,7 +385,7 @@ export function welcomeTemplate(user: CreatedUser) {
                         <tr>
                           <td align="left" style="text-align: center">
                             <a
-                              href="{{loginUrl}}"
+                              href="${linkToVerifyEmail}"
                               style="
                                 display: inline-block;
                                 padding: 15px 28px;
@@ -397,7 +397,7 @@ export function welcomeTemplate(user: CreatedUser) {
                                 font-weight: bold;
                               "
                             >
-                              Iniciar sesión
+                              Verificar correo
                             </a>
                           </td>
                         </tr>
