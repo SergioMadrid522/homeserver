@@ -2,7 +2,7 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import { Resend } from 'resend';
 import { CreatedUser } from 'src/types/user.types';
 import { welcomeTemplate } from './templates/welcome-template';
-import { forgotPasswordTemplate } from './templates/reset-password-template';
+import { forgotPasswordTemplate } from './templates/reset-code-template';
 
 @Injectable()
 export class MailService {

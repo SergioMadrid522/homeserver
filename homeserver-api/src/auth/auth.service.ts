@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { SignUpDto } from './DTO/sign-up.dto';
@@ -18,9 +19,12 @@ import { JwtService } from '@nestjs/jwt';
 import { ForgotPasswordDto } from './DTO/forgot-password.dto';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
+import { VerifyResetCodeDto } from './DTO/verify-reset-code.dto';
 
 @Injectable()
 export class AuthService {
+  private resetToken;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
@@ -192,7 +196,7 @@ export class AuthService {
     if (countCodes === 1) {
       await this.prisma.recoverPassword.update({
         where: { recoverId: recovery?.recoverId },
-        data: { attempts: { increment: 1 } },
+        data: { codeHash, attempts: { increment: 1 } },
       });
     } else {
       await this.prisma.recoverPassword.create({
@@ -209,6 +213,53 @@ export class AuthService {
     return {
       status: 200,
       message: genericMessage,
+    };
+  }
+
+  async verifyResetCode(body: VerifyResetCodeDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { email: body.email },
+      select: {
+        userId: true,
+        email: true,
+      },
+    });
+
+    const code = await this.prisma.recoverPassword.findFirst({
+      where: { userId: user?.userId },
+    });
+
+    if (!code) {
+      throw new NotFoundException(
+        'Esta cuenta no tiene ningún codigo asociado',
+      );
+    }
+
+    if (code?.isUsed) {
+      await this.prisma.recoverPassword.deleteMany({
+        where: { userId: user?.userId },
+      });
+
+      throw new ConflictException('Este codigo ya ha sido usado');
+    }
+
+    const isMatch = await bcrypt.compare(body.resetCode, code?.codeHash!);
+
+    if (!isMatch) {
+      console.log('codigo incorrecto');
+      throw new ConflictException('Código incorrecto.');
+    }
+
+    await this.prisma.recoverPassword.updateMany({
+      where: { userId: user?.userId },
+      data: { isUsed: true },
+    });
+
+    this.resetToken = this.generateResetToken(user?.email!);
+    console.log(this.resetToken);
+
+    return {
+      status: 200,
     };
   }
 }

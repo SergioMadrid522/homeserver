@@ -68,7 +68,7 @@ export function welcomeTemplate(user: CreatedUser) {
                                 text-transform: uppercase;
                               "
                             >
-                              AM Cloud Server
+                              AMCloud Server
                             </p>
 
                             <p
@@ -145,7 +145,7 @@ export function welcomeTemplate(user: CreatedUser) {
                         "
                       >
                         Hemos creado correctamente tu cuenta en
-                        <strong style="color: #374151"> AM Cloud Server</strong
+                        <strong style="color: #374151"> AMCloud Server</strong
                         >. A partir de ahora puedes almacenar y administrar tus
                         archivos desde un espacio privado.
                       </p>
@@ -368,7 +368,7 @@ export function welcomeTemplate(user: CreatedUser) {
                             >
                               Tus archivos estarán asociados únicamente a tu
                               cuenta y se almacenarán en una infraestructura
-                              privada administrada por AM Cloud Server.
+                              privada administrada por AMCloud Server.
                             </p>
                           </td>
                         </tr>
@@ -449,7 +449,7 @@ export function welcomeTemplate(user: CreatedUser) {
                                 font-weight: bold;
                               "
                             >
-                              AM Cloud Server
+                              AMCloud Server
                             </p>
 
                             <p

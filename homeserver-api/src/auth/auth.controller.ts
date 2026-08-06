@@ -1,10 +1,11 @@
-import { Body, Controller, Post, Res } from '@nestjs/common';
+import { Body, Controller, Param, Post, Res } from '@nestjs/common';
 import { SignUpDto } from './DTO/sign-up.dto';
 import { AuthService } from './auth.service';
 import { LoginDto } from './DTO/login.dto';
 import type { Response } from 'express';
 import { ForgotPasswordDto } from './DTO/forgot-password.dto';
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
+import { VerifyResetCodeDto } from './DTO/verify-reset-code.dto';
 
 @SkipThrottle()
 @Controller('/auth')
@@ -30,10 +31,15 @@ export class AuthController {
   }
 
   @Post('/forgot-password')
-  forgotPassword(@Body() email: ForgotPasswordDto) {
-    return this.authService.forgotPassword(email);
+  forgotPassword(@Body() credentials: ForgotPasswordDto) {
+    return this.authService.forgotPassword(credentials);
   }
 
   @Post('/verify-reset-code')
+  verifyResetCode(@Body() body: VerifyResetCodeDto) {
+    return this.authService.verifyResetCode(body);
+  }
+
+  @Post('/reset-password')
   resetPassword() {}
 }

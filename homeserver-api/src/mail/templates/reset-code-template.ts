@@ -233,7 +233,7 @@ export function forgotPasswordTemplate(verificationCode: string) {
                           line-height: 21px;
                         "
                       >
-                        No compartas este código con ninguna persona. AM Cloud
+                        No compartas este código con ninguna persona. AMCloud
                         Server nunca te pedirá tu código de recuperación por
                         llamada, mensaje o correo electrónico.
                       </p>

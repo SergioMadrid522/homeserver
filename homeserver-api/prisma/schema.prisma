@@ -90,7 +90,7 @@ model Folder {
 
 model RecoverPassword {
   recoverId Int      @id @default(autoincrement()) @map("recover_id")
-  codeHash  String   @map("code_hash")
+  codeHash  String   @unique @map("code_hash")
   createdAt DateTime @default(now()) @map("created_at")
   attempts  Int      @default(0)
   isUsed    Boolean  @default(false) @map("is_used")
