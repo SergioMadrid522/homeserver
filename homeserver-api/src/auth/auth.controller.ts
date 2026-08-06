@@ -1,8 +1,8 @@
-import { Body, Controller, Param, Post, Res } from '@nestjs/common';
+import { Body, Controller, Param, Post, Req, Res } from '@nestjs/common';
 import { SignUpDto } from './DTO/sign-up.dto';
 import { AuthService } from './auth.service';
 import { LoginDto } from './DTO/login.dto';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { ForgotPasswordDto } from './DTO/forgot-password.dto';
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { VerifyResetCodeDto } from './DTO/verify-reset-code.dto';
@@ -27,8 +27,11 @@ export class AuthController {
   }
 
   @Post('/logout')
-  logout(@Res({ passthrough: true }) response: Response) {
-    return this.authService.logout(response);
+  logout(
+    @Res({ passthrough: true }) response: Response,
+    @Req() request: Request,
+  ) {
+    return this.authService.logout(response, request);
   }
 
   @Post('/forgot-password')

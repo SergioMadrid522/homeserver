@@ -12,9 +12,9 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { MailService } from 'src/mail/mail.service';
 import { capitalizeFirstletter } from 'src/utils/capitalize-first-letter';
 import { LoginDto } from './DTO/login.dto';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { setAuthCookie } from 'src/setCookie/set-session-cookie';
-import { signJwt } from 'src/setCookie/jwt';
+import { signJwt, verifyJwt } from 'src/setCookie/jwt';
 import { JwtService } from '@nestjs/jwt';
 import { ForgotPasswordDto } from './DTO/forgot-password.dto';
 import * as crypto from 'crypto';
@@ -72,7 +72,6 @@ export class AuthService {
   }
 
   async login(credentials: LoginDto, response: Response) {
-    console.log(this.resetToken);
     const registeredUser = await this.prisma.user.findUnique({
       where: { email: credentials.email },
       select: {
@@ -159,8 +158,33 @@ export class AuthService {
     };
   }
 
-  logout(res: Response) {
+  async logout(res: Response, req: Request) {
+    const token = req.cookies?.sessionCookie;
+
+    if (!token) {
+      throw new UnauthorizedException('No hay una sesión activa.');
+    }
+
+    const payload = await verifyJwt(token);
+
+    if (!payload) {
+      throw new UnauthorizedException('Sesión inválida o expirada.');
+    }
+    if (typeof payload.email !== 'string') {
+      throw new UnauthorizedException('El token no contiene un correo válido.');
+    }
+    const email = payload.email;
+    const lastLogin = new Date();
+
+    await this.prisma.user.update({
+      where: { email },
+      data: { lastLogin },
+    });
+
     res.clearCookie('sessionCookie');
+    return {
+      message: 'Se ha cerrado sesión con éxito.',
+    };
   }
 
   async forgotPassword(credentials: ForgotPasswordDto) {
@@ -259,7 +283,6 @@ export class AuthService {
     const isMatch = await bcrypt.compare(body.resetCode, code?.codeHash!);
 
     if (!isMatch) {
-      console.log('codigo incorrecto');
       throw new ConflictException('Código incorrecto.');
     }
 
@@ -275,7 +298,6 @@ export class AuthService {
     }
 
     this.resetToken = this.generateResetToken(user?.email!);
-    console.log(this.resetToken);
 
     await this.prisma.recoverPassword.deleteMany({
       where: { userId: user?.userId },
