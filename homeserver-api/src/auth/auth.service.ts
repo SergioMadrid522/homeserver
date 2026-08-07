@@ -177,7 +177,7 @@ export class AuthService {
 
     const linkToVerifyEmail = `${process.env.FRONTEND_URL}/verify-email?token=${encodeURIComponent(verificationToken)}`;
 
-    //this.mail.welcomeEmail(createdUser, linkToVerifyEmail);
+    this.mail.welcomeEmail(createdUser, linkToVerifyEmail);
 
     return {
       url: `http://192.168.0.21:3001/auth/verify-email?token=${encodeURIComponent(verificationToken)}`,
