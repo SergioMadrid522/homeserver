@@ -69,6 +69,7 @@ model Folder {
   folderId       Int       @id @default(autoincrement()) @map("folder_id")
   title          String
   createdAt      DateTime  @default(now()) @map("created_at")
+  storageName    String    @unique @map("storage_name")
   updatedAt      DateTime  @updatedAt @map("updated_at")
   parentFolderId Int?      @map("parent_folder")
   isDeleted      Boolean   @default(false) @map("is_deleted")
