@@ -8,7 +8,6 @@ import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { VerifyResetCodeDto } from './DTO/verify-reset-code.dto';
 import { ResetPasswordDto } from './DTO/reset-password.dto';
 
-@SkipThrottle()
 @Controller('/auth')
 export class AuthController {
   constructor(private authService: AuthService) {}

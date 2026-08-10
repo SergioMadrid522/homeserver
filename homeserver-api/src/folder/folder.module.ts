@@ -3,7 +3,6 @@ import { FolderController } from './folder.controller';
 import { FolderService } from './folder.service';
 
 @Module({
-  imports: [],
   controllers: [FolderController],
   providers: [FolderService],
 })
