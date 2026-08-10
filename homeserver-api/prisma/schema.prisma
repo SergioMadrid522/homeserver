@@ -34,7 +34,7 @@ model User {
   profilePicture String?   @map("profile_picture")
   deletedAt      DateTime? @map("deleted_at")
   emailVerified  Boolean   @default(false) @map("email_verified")
-  userStorageId  String    @default("") @map("user_storage_id")
+  userStorageId  String    @map("user_storage_id")
 
   files              File[]              @relation("Tiene")
   folders            Folder[]            @relation("Tiene")
