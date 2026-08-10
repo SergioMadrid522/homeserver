@@ -19,22 +19,23 @@ enum USER_ROLE {
 }
 
 model User {
-  userId             Int                 @id @default(autoincrement()) @map("user_id")
-  name               String
-  lastname           String
-  email              String              @unique
-  passwordHash       String              @map("password_hash")
-  role               USER_ROLE           @default(CLIENT)
-  isActive           Boolean             @default(true) @map("is_active")
-  createdAt          DateTime            @default(now()) @map("created_at")
-  updatedAt          DateTime            @updatedAt @map("updated_at")
-  lastLogin          DateTime?           @map("last_login")
-  storageLimit       BigInt              @default(150000000000) @map("storage_limit")
-  currentStorage     BigInt              @default(0) @map("current_storage")
-  profilePicture     String?             @map("profile_picture")
-  deletedAt          DateTime?           @map("deleted_at")
-  emailVerified      Boolean             @default(false) @map("email_verified")
-  userStorageID      String              @map("user_storage_id")
+  userId         Int       @id @default(autoincrement()) @map("user_id")
+  name           String
+  lastname       String
+  email          String    @unique
+  passwordHash   String    @map("password_hash")
+  role           USER_ROLE @default(CLIENT)
+  isActive       Boolean   @default(true) @map("is_active")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  lastLogin      DateTime? @map("last_login")
+  storageLimit   BigInt    @default(150000000000) @map("storage_limit")
+  currentStorage BigInt    @default(0) @map("current_storage")
+  profilePicture String?   @map("profile_picture")
+  deletedAt      DateTime? @map("deleted_at")
+  emailVerified  Boolean   @default(false) @map("email_verified")
+  userStorageId  String    @default("") @map("user_storage_id")
+
   files              File[]              @relation("Tiene")
   folders            Folder[]            @relation("Tiene")
   recoverPasswords   RecoverPassword[]
