@@ -37,12 +37,20 @@ export class FolderController {
     return this.folderService.getFavoriteFolders(credentials);
   }
 
-  @Patch('/:id/trash')
+  @Patch('/:id/move-to-trash')
   MoveToTrash(@Param('id') id: string, @User() credentials: Credentials) {
     return this.folderService.moveToTrash(Number(id), credentials);
   }
 
-  @Delete('/:id/trash')
+  @Patch('/:id/recover-folder-from-trash')
+  RecoverFolderFromTrash(
+    @Param('id') id: string,
+    @User() credentials: Credentials,
+  ) {
+    return this.folderService.recoverFolderFromTrash(Number(id), credentials);
+  }
+
+  @Delete('/:id/delete-folder')
   DeleteFolder(@Param('id') id: string, @User() credentials: Credentials) {
     return this.folderService.deleteFolder(Number(id), credentials);
   }

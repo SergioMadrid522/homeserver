@@ -126,12 +126,37 @@ export class FolderService {
     };
   }
 
+  async recoverFolderFromTrash(folderId: number, credentials: Credentials) {
+    const folderExists = await this.prisma.folder.findUnique({
+      where: { folderId, userId: credentials.userId, isDeleted: true },
+      select: { isDeleted: true },
+    });
+
+    if (!folderExists?.isDeleted) {
+      throw new BadRequestException(
+        'La carpeta que intentas recuperar no está en la papelera de reciclaje o no existe.',
+      );
+    }
+
+    const updatedAt = new Date();
+
+    await this.prisma.folder.update({
+      where: { folderId, userId: credentials.userId },
+      data: { isDeleted: false, updatedAt },
+    });
+
+    return {
+      message: 'Se recuperó con éxito.',
+    };
+  }
+
   async deleteFolder(folderId: number, credentials: Credentials) {
     const folderExists = await this.prisma.folder.findUnique({
       where: { folderId, userId: credentials.userId },
+      select: { isDeleted: true },
     });
 
-    if (!folderExists) {
+    if (!folderExists?.isDeleted) {
       throw new BadRequestException(
         'La carpeta que intentas borrar no existe o no está en la papelera de reciclaje.',
       );
@@ -210,10 +235,6 @@ export class FolderService {
       await this.FindFolderHierarchy(body.parentFolderId)
     ).reverse();
 
-    const frontEndpath = folderHierarchy.map((ch) => ch.title).join('/');
-    const serverPath = folderHierarchy.map((ch) => ch.storage_name).join('');
-
-    console.log(body);
     const parentName = await this.prisma.folder.findFirst({
       where: {
         userId: credentials.userId,
@@ -230,7 +251,17 @@ export class FolderService {
       finalPath = parentName.storageName;
     }
 
-    const targetDirectory = path.join(this.baseDisk, finalPath, storageName);
+    const user = await this.prisma.user.findUnique({
+      where: { userId: credentials.userId },
+      select: { userStorageId: true },
+    });
+
+    const targetDirectory = path.join(
+      this.baseDisk,
+      user?.userStorageId!,
+      finalPath,
+      storageName,
+    );
 
     try {
       await fs.mkdir(targetDirectory);
@@ -314,7 +345,6 @@ export class FolderService {
           },
         });
       } else {
-        console.error(error);
         throw new BadRequestException(
           'No se pudo crear la carpeta, por favor intenta más tarde.',
         );

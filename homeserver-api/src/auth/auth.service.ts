@@ -21,16 +21,26 @@ import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { VerifyResetCodeDto } from './DTO/verify-reset-code.dto';
 import { ResetPasswordDto } from './DTO/reset-password.dto';
+import { v4 as uuidv4 } from 'uuid';
+import { promises as fs } from 'fs';
+import path from 'path';
 
 @Injectable()
 export class AuthService {
   private tempToken!: string;
+  private baseDisk;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private mail: MailService,
-  ) {}
+  ) {
+    this.baseDisk = process.env.DISK_PATH;
+
+    if (!this.baseDisk) {
+      throw new Error('La variable DISK_PATH no esta definida');
+    }
+  }
 
   private async isEmailRegistered(email: string): Promise<boolean> {
     const user = await this.prisma.user.findUnique({
@@ -144,12 +154,15 @@ export class AuthService {
 
     const passwordHash = await hashPassword(password);
 
+    const userStorageId = uuidv4();
+
     const createdUser = await this.prisma.user.create({
       data: {
         name: capitalizeFirstletter(name),
         lastname: capitalizeFirstletter(lastname),
         email,
         passwordHash,
+        userStorageId,
       },
       select: {
         userId: true,
@@ -371,12 +384,9 @@ export class AuthService {
     }
 
     const validation = await this.prisma.emailVerification.findFirst({
-      where: {
-        userId: user.userId,
-      },
-      orderBy: {
-        verificationId: 'desc',
-      },
+      where: { userId: user.userId },
+      orderBy: { verificationId: 'desc' },
+      include: { user: { select: { userStorageId: true } } },
     });
 
     if (!validation) {
@@ -401,17 +411,29 @@ export class AuthService {
       throw new BadRequestException('Token inválido.');
     }
 
-    await this.prisma.$transaction([
-      this.prisma.user.update({
-        where: { userId: user.userId },
-        data: { emailVerified: true },
-      }),
+    const targetDirectory = path.join(
+      this.baseDisk,
+      validation.user.userStorageId,
+    );
 
-      this.prisma.emailVerification.update({
-        where: { verificationId: validation.verificationId },
-        data: { isUsed: true },
-      }),
-    ]);
+    try {
+      await fs.mkdir(targetDirectory);
+
+      await this.prisma.$transaction([
+        this.prisma.user.update({
+          where: { userId: user.userId },
+          data: { emailVerified: true },
+        }),
+
+        this.prisma.emailVerification.update({
+          where: { verificationId: validation.verificationId },
+          data: { isUsed: true },
+        }),
+      ]);
+    } catch (error) {
+      console.error(error);
+      throw new BadRequestException('Error al crear la carpeta del usuario.');
+    }
 
     return {
       message: 'Email verificado, ya puede iniciar sesión.',
