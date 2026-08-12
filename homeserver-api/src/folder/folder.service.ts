@@ -153,18 +153,39 @@ export class FolderService {
   async deleteFolder(folderId: number, credentials: Credentials) {
     const folderExists = await this.prisma.folder.findUnique({
       where: { folderId, userId: credentials.userId },
-      select: { isDeleted: true },
+      select: { isDeleted: true, storageName: true },
     });
 
-    if (!folderExists?.isDeleted) {
+    if (!folderExists) {
       throw new BadRequestException(
         'La carpeta que intentas borrar no existe o no está en la papelera de reciclaje.',
       );
     }
 
-    await this.prisma.folder.delete({
-      where: { folderId, userId: credentials.userId, isDeleted: true },
+    const user = await this.prisma.user.findUnique({
+      where: { userId: credentials.userId },
+      select: { userStorageId: true },
     });
+
+    if (!user) {
+      throw new NotFoundException('No hay ningún usuario activo.');
+    }
+
+    const __dirname = path.join(
+      this.baseDisk,
+      user.userStorageId,
+      folderExists.storageName,
+    );
+
+    try {
+      await fs.rm(__dirname, { recursive: true, force: true });
+
+      await this.prisma.folder.delete({
+        where: { folderId, userId: credentials.userId, isDeleted: true },
+      });
+    } catch (error) {
+      throw new BadRequestException('No se pudo eliminar la carpeta.');
+    }
 
     return {
       message: 'La carpeta se ha borrado con éxito.',
