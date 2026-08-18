@@ -8,6 +8,8 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { FileModule } from './file/file.module';
 import { FolderModule } from './folder/folder.module';
+import { ZipfilesService } from './zipfiles/zipfiles.service';
+import { ZipfilesModule } from './zipfiles/zipfiles.module';
 
 @Module({
   imports: [
@@ -21,6 +23,7 @@ import { FolderModule } from './folder/folder.module';
     ]),
     FileModule,
     FolderModule,
+    ZipfilesModule,
   ],
   controllers: [AppController],
   providers: [
@@ -29,6 +32,7 @@ import { FolderModule } from './folder/folder.module';
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
     },
+    ZipfilesService,
   ],
 })
 export class AppModule {}

@@ -24,7 +24,7 @@ export class FolderController {
 
   @Get()
   ViewFolders(@User() credentials: Credentials) {
-    return this.folderService.viewAllFolders(credentials);
+    return this.folderService.getFolders(credentials);
   }
 
   @Get('/:id/folder-data')
@@ -35,6 +35,11 @@ export class FolderController {
   @Get('/favorites')
   GetFavoritesFolders(@User() credentials: Credentials) {
     return this.folderService.getFavoriteFolders(credentials);
+  }
+
+  @Get('/:id/download')
+  DownloadFolder(@Param('id') id: string, @User() credentials: Credentials) {
+    return this.folderService.downloadFolder(Number(id), credentials);
   }
 
   @Patch('/:id/move-to-trash')

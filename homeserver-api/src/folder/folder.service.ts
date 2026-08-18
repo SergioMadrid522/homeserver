@@ -10,13 +10,21 @@ import { CreateFolderDto } from './DTO/create-folder.dto';
 import { v4 as uuidv4 } from 'uuid';
 import { promises as fs } from 'fs';
 import path from 'path';
-import type { FolderHierarchy } from './types/FolderHierarchy.type';
+import type {
+  ParentFolders,
+  ChildrenFolders,
+  FolderHierarchy,
+} from './types/FolderHierarchy.type';
+import { ZipfilesService } from 'src/zipfiles/zipfiles.service';
 
 @Injectable()
 export class FolderService {
-  private baseDisk;
+  private readonly baseDisk;
 
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private zipFile: ZipfilesService,
+  ) {
     this.baseDisk = process.env.DISK_PATH;
 
     if (!this.baseDisk) {
@@ -24,10 +32,39 @@ export class FolderService {
     }
   }
 
-  private async FindFolderHierarchy(
-    parentFolderId: number | null | undefined,
+  private async getFolderDescendants(
+    folderId: number,
+    userId: number,
   ): Promise<FolderHierarchy[]> {
-    let childrens: FolderHierarchy[] = await this.prisma.$queryRaw`
+    return await this.prisma.$queryRaw<FolderHierarchy[]>`
+      WITH RECURSIVE folderDescendants AS (
+        SELECT
+          folder_id,
+          title,
+          parent_folder,
+          storage_name
+        FROM folders
+        WHERE folder_id = ${folderId}
+          AND user_id = ${userId}
+        UNION ALL
+        SELECT
+          f.folder_id,
+          f.title,
+          f.parent_folder,
+          f.storage_name
+        FROM folders f
+        INNER JOIN folderDescendants ch
+          ON f.parent_folder = ch.folder_id
+      )
+      SELECT * FROM folderDescendants order by folder_id asc;
+    `;
+  }
+
+  private async getFolderAncestors(
+    parentFolderId: number | null | undefined,
+    userId: number,
+  ): Promise<FolderHierarchy[]> {
+    /* return await this.prisma.$queryRaw<FolderHierarchy[]>`
       WITH RECURSIVE children AS (
         SELECT 
           folder_parent.folder_id,
@@ -38,6 +75,7 @@ export class FolderService {
         LEFT JOIN "folders" folder_children 
           ON folder_parent.folder_id = folder_children.parent_folder 
         WHERE folder_children.folder_id = ${parentFolderId}
+          AND folder_parent.user_id = ${userId}
         UNION all
         SELECT 
           fr.folder_id,
@@ -48,17 +86,37 @@ export class FolderService {
         INNER JOIN children ca ON ca.parent_folder = fr.folder_id
       )
       SELECT * FROM children;
+    `; */
+    return await this.prisma.$queryRaw<FolderHierarchy[]>`
+    with recursive carpetas_hijas as(
+      SELECT 
+        folder_id,
+        title,
+        parent_folder,
+        storage_name
+      FROM folders  
+      where folder_id = ${parentFolderId} and user_id = ${userId}
+      union all
+      select
+        f.folder_id,
+        f.title,
+        f.parent_folder,
+        f.storage_name
+      from folders f
+      inner join carpetas_hijas ch
+        on  f.folder_id = ch.parent_folder 
+        --on ch.folder_id = f.parent_folder  
+    )
+    select * from carpetas_hijas;
     `;
-
-    return childrens;
   }
 
-  async viewAllFolders(credentials: Credentials) {
+  async getFolders(credentials: Credentials) {
     const folders = await this.prisma.folder.findMany({
       where: { userId: credentials.userId, isDeleted: false },
     });
 
-    if (!folders) {
+    if (folders.length === 0) {
       throw new BadRequestException('Por ahora no hay nada que mostrar.');
     }
 
@@ -80,7 +138,7 @@ export class FolderService {
       },
     });
 
-    if (!folder?.files) {
+    if (!folder) {
       throw new BadRequestException('No hay nada para mostrar.');
     }
 
@@ -94,13 +152,75 @@ export class FolderService {
       where: { userId: credentials.userId, isFavorite: true },
     });
 
-    if (!favoriteFolders) {
+    if (favoriteFolders.length === 0) {
       throw new NotFoundException(
         'No tienes ninguna carpeta agregada a favoritos.',
       );
     }
     return {
       favoriteFolders,
+    };
+  }
+
+  async downloadFolder(folderId: number, credentials: Credentials) {
+    const folder = await this.prisma.folder.findUnique({
+      where: { folderId, userId: credentials.userId },
+      select: { isDeleted: true, storageName: true, title: true },
+    });
+
+    if (!folder) {
+      throw new BadRequestException(
+        'La carpeta que intentas borrar no existe o no está en la papelera de reciclaje.',
+      );
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { userId: credentials.userId },
+      select: { userStorageId: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('No hay ningún usuario activo.');
+    }
+
+    const getFolderPath = await this.getFolderAncestors(
+      folderId,
+      credentials.userId,
+    );
+
+    const folderParents: ParentFolders[] = getFolderPath.map((folder) => ({
+      title: folder.title,
+      uuid: folder.storage_name,
+    }));
+
+    const getChildrenFolders = await this.getFolderDescendants(
+      folderId,
+      credentials.userId,
+    );
+
+    const childrenFolders: ChildrenFolders[] = getChildrenFolders.map(
+      (folder) => ({
+        folderId: folder.folder_id,
+        title: folder.title,
+        uuid: folder.storage_name,
+        parentId: folder.parent_folder,
+      }),
+    );
+
+    const finalFolderPath = path.join(
+      this.baseDisk,
+      user.userStorageId,
+      ...folderParents.map((folder) => folder.uuid),
+    );
+
+    await this.zipFile.CreateZipFolder(
+      finalFolderPath,
+      folder.title,
+      childrenFolders,
+    );
+
+    return {
+      message: 'Se ha descargado con éxito',
     };
   }
 
@@ -252,11 +372,12 @@ export class FolderService {
     const createdAt = new Date();
     const storageName = uuidv4();
 
-    const folderHierarchy = (
-      await this.FindFolderHierarchy(body.parentFolderId)
-    ).reverse();
+    const folderHierarchy = await this.getFolderAncestors(
+      body.parentFolderId,
+      credentials.userId,
+    );
 
-    const parentName = await this.prisma.folder.findFirst({
+    /* const parentName = await this.prisma.folder.findFirst({
       where: {
         userId: credentials.userId,
         ...(body.parentFolderId ? { folderId: body.parentFolderId } : {}),
@@ -271,21 +392,43 @@ export class FolderService {
     } else {
       finalPath = parentName.storageName;
     }
+ */
 
     const user = await this.prisma.user.findUnique({
       where: { userId: credentials.userId },
       select: { userStorageId: true },
     });
 
-    const targetDirectory = path.join(
-      this.baseDisk,
-      user?.userStorageId!,
-      finalPath,
-      storageName,
-    );
+    if (!user) {
+      throw new BadRequestException('No hay un usuario activo');
+    }
 
+    const getParentStorageName = folderHierarchy
+      .map((folder) => folder.storage_name)
+      .reverse()
+      .join('/');
+
+    let targetDirectory: string;
+
+    if (!getParentStorageName) {
+      targetDirectory = path.join(
+        this.baseDisk,
+        user.userStorageId,
+        storageName,
+      );
+    } else {
+      targetDirectory = path.join(
+        this.baseDisk,
+        user.userStorageId,
+        getParentStorageName,
+        storageName,
+      );
+    }
+
+    let directoryCreated = false;
     try {
       await fs.mkdir(targetDirectory);
+      directoryCreated = true;
 
       await this.prisma.$transaction([
         this.prisma.folder.create({
@@ -325,11 +468,15 @@ export class FolderService {
       ]);
 
       return {
-        folderHierarchy,
-        targetDirectory,
         message: 'Se ha creado la carpeta con éxito.',
       };
     } catch (error: unknown) {
+      if (directoryCreated) {
+        await fs.rm(targetDirectory, {
+          recursive: true,
+          force: true,
+        });
+      }
       if (
         error &&
         typeof error === 'object' &&
