@@ -51,7 +51,7 @@ Next.js             NestJS                 CLI                      └───
                                             │
                                             ▼
                                       Debian Server
-                                      
+
 ```
 
 ---
@@ -304,16 +304,21 @@ Folder management is currently the most developed part of the application.
 
 Folders
 
+Completed
+
 ✅ View all folders
 ✅ Create folder
 ✅ Move to trash
 ✅ Delete individual folder
 ✅ Download folder
-⏳ Delete multiple
-⏸️ Multiple downloads → Beta / v2
 ✅ Favorite
 ✅ Edit folder
 ✅ Folder data
+
+Pending
+
+⏳ Delete multiple
+⏸️ Multiple downloads → Beta / v2
 
 ```
 
@@ -579,17 +584,17 @@ Each component has a specific responsibility.
 The system intentionally separates:
 
 ```text
-        Application
-            │
-            └── User-facing functionality
-        
-        Management CLI
-            │
-            └── Administrator-facing functionality
-        
-        Backup Automation
-            │
-            └── Automated system tasks
+Application
+    │
+    └── User-facing functionality
+
+Management CLI
+    │
+    └── Administrator-facing functionality
+
+Backup Automation
+    │
+    └── Automated system tasks
 ```
 
 ---
@@ -602,15 +607,15 @@ The main server-side components are:
 
 ```text
 
-          Debian
-            │
-            ├── Node.js
-            ├── NestJS
-            ├── PostgreSQL
-            ├── Physical storage
-            ├── Bash CLI
-            ├── Python
-            └── cron
+Debian
+  │
+  ├── Node.js
+  ├── NestJS
+  ├── PostgreSQL
+  ├── Physical storage
+  ├── Bash CLI
+  ├── Python
+  └── cron
 
 ```
 
@@ -624,11 +629,11 @@ The intended deployment stages are:
 
 ```text
 
-        Deployment
-            │
-            ├── Local network
-            │
-            └── Public access
+Deployment
+    │
+    ├── Local network
+    │
+    └── Public access
 
 ```
 
@@ -676,37 +681,39 @@ Deployment to the local network and eventually public access remains pending.
 # Roadmap
 
 ```text
-                Authentication
-                      │
-                      ▼
-                   Folders
-                      │
-                      ├── Delete multiple
-                      │
-                      ▼
-                    Files
-                      │
-                      ▼
-                      UI
-                      │
-                      ▼
-             Responsive Design
-                      │
-                      ▼
-             Backup Automation
-                      │
-                      ▼
-             Management CLI
-                      │
-                      ▼
-             Testing / Hardening
-                      │
-                      ▼
-                 Deployment
-                      │
-                      ├── Local Network
-                      │
-                      └── Public Access
+
+Authentication
+        │
+        ▼
+    Folders
+        │
+        ├── Delete multiple
+        │
+        ▼
+    Files
+        │
+        ▼
+        UI
+        │
+        ▼
+Responsive Design
+        │
+        ▼
+Backup Automation
+        │
+        ▼
+Management CLI
+        │
+        ▼
+Testing / Hardening
+        │
+        ▼
+    Deployment
+        │
+        ├── Local Network
+        │
+        └── Public Access
+
 ```
 
 Multiple downloads are intentionally postponed until a later beta/v2 stage.
@@ -736,23 +743,25 @@ The main goals of the Home Server are:
 The most important design principle of the project is the separation of concerns between:
 
 ```text
-                              HOME SERVER
-                                   │
-                    ┌──────────────┼──────────────┐
-                    │              │              │
-                    ▼              ▼              ▼
-                Application     Management     Automation
-                    │              │              │
-                 Next.js        Bash CLI       Python/Bash
-                    │              │              │
-                 NestJS           SSH           cron
-                    │
-              ┌─────┴─────┐
-              ▼           ▼
-          PostgreSQL     HDD
-              │           │
-           Logical      Physical
-           storage      storage
+
+                    HOME SERVER
+                        │
+        ┌──────────────┼──────────────┐
+        │              │              │
+        ▼              ▼              ▼
+    Application     Management     Automation
+        │              │              │
+        Next.js        Bash CLI       Python/Bash
+        │              │              │
+        NestJS           SSH           cron
+        │
+    ┌─────┴─────┐
+    ▼           ▼
+PostgreSQL     HDD
+    │           │
+Logical      Physical
+storage      storage
+
 ```
 
 The **web application** manages user data.
