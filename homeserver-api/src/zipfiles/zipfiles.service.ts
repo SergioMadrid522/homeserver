@@ -16,7 +16,7 @@ export class ZipfilesService {
     this.archive = new archiver.ZipArchive({ zlib: { level: 9 } });
   }
 
-  private getFolderZipPath(
+  /*   private getFolderZipPath(
     folderId: number,
     folders: ChildrenFolders[],
     rootPath: string,
@@ -38,7 +38,7 @@ export class ZipfilesService {
     );
 
     return path.join(parentPath, folder.title);
-  }
+  } */
 
   private async addFolderToZip(
     physicalPath: string,

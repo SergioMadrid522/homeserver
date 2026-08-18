@@ -64,29 +64,6 @@ export class FolderService {
     parentFolderId: number | null | undefined,
     userId: number,
   ): Promise<FolderHierarchy[]> {
-    /* return await this.prisma.$queryRaw<FolderHierarchy[]>`
-      WITH RECURSIVE children AS (
-        SELECT 
-          folder_parent.folder_id,
-          folder_parent.title,
-          folder_parent.parent_folder,
-		      folder_parent.storage_name
-        FROM "folders" folder_parent
-        LEFT JOIN "folders" folder_children 
-          ON folder_parent.folder_id = folder_children.parent_folder 
-        WHERE folder_children.folder_id = ${parentFolderId}
-          AND folder_parent.user_id = ${userId}
-        UNION all
-        SELECT 
-          fr.folder_id,
-          fr.title,
-          fr.parent_folder,
-		      fr.storage_name
-        FROM "folders" fr	
-        INNER JOIN children ca ON ca.parent_folder = fr.folder_id
-      )
-      SELECT * FROM children;
-    `; */
     return await this.prisma.$queryRaw<FolderHierarchy[]>`
     with recursive carpetas_hijas as(
       SELECT 
@@ -104,8 +81,7 @@ export class FolderService {
         f.storage_name
       from folders f
       inner join carpetas_hijas ch
-        on  f.folder_id = ch.parent_folder 
-        --on ch.folder_id = f.parent_folder  
+        on  f.folder_id = ch.parent_folder
     )
     select * from carpetas_hijas;
     `;
@@ -376,23 +352,6 @@ export class FolderService {
       body.parentFolderId,
       credentials.userId,
     );
-
-    /* const parentName = await this.prisma.folder.findFirst({
-      where: {
-        userId: credentials.userId,
-        ...(body.parentFolderId ? { folderId: body.parentFolderId } : {}),
-      },
-      select: { storageName: true, folderId: true },
-    });
-
-    let finalPath: string = '';
-
-    if (body.parentFolderId === null || !parentName) {
-      finalPath = '/';
-    } else {
-      finalPath = parentName.storageName;
-    }
- */
 
     const user = await this.prisma.user.findUnique({
       where: { userId: credentials.userId },
