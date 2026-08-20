@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Param,
   ParseIntPipe,
   Patch,
   Query,
@@ -23,9 +24,12 @@ export class FileController {
   ) {
     return this.fileService.getFiles(folderId, credentials);
   }
-  @Patch()
+  @Patch('/:id/move-to-trash')
   MoveToTrash(
+    @Param('id', ParseIntPipe) fileId: number,
     @Query('folderId', ParseIntPipe) folderId: number,
     @User() credentials: Credentials,
-  ) {}
+  ) {
+    return this.fileService.moveToTrash(fileId, folderId, credentials);
+  }
 }

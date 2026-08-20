@@ -70,4 +70,37 @@ export class FileService {
 
     return files;
   }
+
+  async moveToTrash(
+    fileId: number,
+    folderId: number,
+    credentials: Credentials,
+  ) {
+    const validation = await this.validateUserAndFolder(folderId, credentials);
+
+    if (validation?.code === 401) {
+      throw new UnauthorizedException(validation?.message);
+    }
+    if (validation?.code === 404) {
+      throw new NotFoundException(validation?.message);
+    }
+
+    const file = await this.prisma.folder.findUnique({
+      where: {
+        folderId,
+        userId: credentials.userId,
+        files: { some: { fileId } },
+      },
+      select: { files: { select: { fileId: true } } },
+    });
+
+    if (!file) {
+      throw new NotFoundException('El archivo que intentas borrar no existe.');
+    }
+
+    return {
+      file,
+      message: 'El archivo se movió correctamente a la papelera.',
+    };
+  }
 }
