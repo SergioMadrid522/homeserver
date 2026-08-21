@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import type { Credentials } from 'src/types/user.types';
+import { EditFileDto } from './DTO/edit-file.dto';
 
 @Injectable()
 export class FileService {
@@ -101,6 +102,47 @@ export class FileService {
     return {
       file,
       message: 'El archivo se movió correctamente a la papelera.',
+    };
+  }
+
+  async editFile(
+    body: EditFileDto,
+    fileId: number,
+    folderId: number,
+    credentials: Credentials,
+  ) {
+    const validation = await this.validateUserAndFolder(folderId, credentials);
+
+    if (validation?.code === 401) {
+      throw new UnauthorizedException(validation?.message);
+    }
+    if (validation?.code === 404) {
+      throw new NotFoundException(validation?.message);
+    }
+
+    const fileExists = await this.prisma.file.findUnique({
+      where: { fileId },
+      select: { fileId: true },
+    });
+
+    if (!fileExists) {
+      throw new NotFoundException(
+        'El archivo que intenta modificar no existe.',
+      );
+    }
+
+    const updatedAt = new Date();
+
+    await this.prisma.file.update({
+      where: { fileId, userId: credentials.userId },
+      data: {
+        name: body.name,
+        updatedAt,
+      },
+    });
+
+    return {
+      message: 'Se modificó el nombre al archivo.',
     };
   }
 }
