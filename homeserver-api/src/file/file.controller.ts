@@ -36,6 +36,15 @@ export class FileController {
     return this.fileService.moveToTrash(fileId, folderId, credentials);
   }
 
+  @Patch('/:id/favorite')
+  AddToFavorite(
+    @Param('id', ParseIntPipe) fileId: number,
+    @Query('folderId', ParseIntPipe) folderId: number,
+    @User() credentials: Credentials,
+  ) {
+    return this.fileService.addToFavorite(fileId, folderId, credentials);
+  }
+
   @Patch('/:id/edit-file')
   EditFile(
     @Param('id', ParseIntPipe) fileId: number,

@@ -145,4 +145,41 @@ export class FileService {
       message: 'Se modificó el nombre al archivo.',
     };
   }
+
+  async addToFavorite(
+    fileId: number,
+    folderId: number,
+    credentials: Credentials,
+  ) {
+    const validation = await this.validateUserAndFolder(folderId, credentials);
+
+    if (validation?.code === 401) {
+      throw new UnauthorizedException(validation?.message);
+    }
+    if (validation?.code === 404) {
+      throw new NotFoundException(validation?.message);
+    }
+
+    const fileExists = await this.prisma.file.findUnique({
+      where: { fileId },
+      select: { fileId: true },
+    });
+
+    if (!fileExists) {
+      throw new NotFoundException(
+        'El archivo que intenta modificar no existe.',
+      );
+    }
+
+    const updatedAt = new Date();
+
+    await this.prisma.file.update({
+      where: { fileId, userId: credentials.userId },
+      data: { isFavorite: true, updatedAt },
+    });
+
+    return {
+      message: 'El archivo se agregó a sus favoritos.',
+    };
+  }
 }
