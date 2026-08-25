@@ -11,3 +11,7 @@ export interface User {
   lastname: string;
   createdAt: String;
 }
+
+export interface Credentials {
+  userId: number;
+}
