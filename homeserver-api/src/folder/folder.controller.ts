@@ -4,16 +4,16 @@ import {
   Delete,
   Get,
   Param,
+  ParseArrayPipe,
   Patch,
   Post,
-  Req,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { FolderService } from './folder.service';
-import type { Request } from 'express';
 import { LoggerGuard } from 'src/logger/logger.guard';
 import { User } from 'src/usuario.decorator';
-import type { Credentials } from './types/user.types';
+import type { Credentials } from 'src/types/user.types';
 import { EditFolderDto } from './DTO/edit-folder.dto';
 import { CreateFolderDto } from './DTO/create-folder.dto';
 
@@ -58,6 +58,15 @@ export class FolderController {
   @Delete('/:id/delete-folder')
   DeleteFolder(@Param('id') id: string, @User() credentials: Credentials) {
     return this.folderService.deleteFolder(Number(id), credentials);
+  }
+
+  @Delete('/delete-multiple-folders')
+  DeleteMultipleFolders(
+    @Query('ids', new ParseArrayPipe({ items: Number, separator: ',' }))
+    ids: number[],
+    @User() credentials: Credentials,
+  ) {
+    return this.folderService.deleteMultipleFolders(ids, credentials);
   }
 
   @Patch('/:id/favorite')

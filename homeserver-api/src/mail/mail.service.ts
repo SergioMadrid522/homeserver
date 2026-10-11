@@ -12,7 +12,7 @@ export class MailService {
   async welcomeEmail(user: CreatedUser, linkToVerifyEmail: string) {
     const { error } = await this.resend.emails.send({
       from: 'AMCloud Server <onboarding@resend.dev>',
-      to: ['sergioac.madrid@hotmail.com'] /* user.email */,
+      to: ['sergioac.madrid@hotmail.com'], //user.email
       subject: `Welcome to AM CLOUD SERVER, ${user.name}!`,
       html: welcomeTemplate(user, linkToVerifyEmail),
     });

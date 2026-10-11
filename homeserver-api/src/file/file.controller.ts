@@ -19,6 +19,7 @@ import { User } from 'src/usuario.decorator';
 import type { Credentials } from 'src/types/user.types';
 import { EditFileDto } from './DTO/edit-file.dto';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
+import { DeleteFilesQueryParamsDto } from './DTO/delete-files-query-params.dto';
 
 @Controller('files')
 @UseGuards(LoggerGuard)
@@ -70,5 +71,12 @@ export class FileController {
     @User() credentials: Credentials,
   ) {
     return this.fileService.deleteFile(fileId, folderId, credentials);
+  }
+  @Delete('/empty-trash')
+  emptyTrash(
+    @Query() query: DeleteFilesQueryParamsDto,
+    @User() credentials: Credentials,
+  ) {
+    return this.fileService.deleteFiles(query, credentials);
   }
 }

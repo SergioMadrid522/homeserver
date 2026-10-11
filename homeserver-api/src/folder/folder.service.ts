@@ -2,9 +2,11 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import type { Credentials } from './types/user.types';
+import { Prisma } from '../../generated/prisma/client';
+import type { Credentials } from 'src/types/user.types';
 import { EditFolderDto } from './DTO/edit-folder.dto';
 import { CreateFolderDto } from './DTO/create-folder.dto';
 import { v4 as uuidv4 } from 'uuid';
@@ -14,7 +16,10 @@ import type {
   ParentFolders,
   ChildrenFolders,
   FolderHierarchy,
+  FolderPathsForTrashBin,
+  DirectoryStatus,
 } from './types/FolderHierarchy.type';
+import type { File } from './types/GetFolderData.type';
 import { ZipfilesService } from 'src/zipfiles/zipfiles.service';
 
 @Injectable()
@@ -32,6 +37,40 @@ export class FolderService {
     }
   }
 
+  private async getFolderPathsForTrashBin(
+    foldersIds: number[],
+    userId: number,
+  ) {
+    return this.prisma.$queryRaw<FolderPathsForTrashBin[]>`
+    with recursive folderHierarchy as(
+      SELECT 
+      	folder_id as targetFolderId,
+        folder_id as folderId,
+        cast(title as varchar(500)) as title,
+        parent_folder as parentFolder,
+        cast(storage_name as varchar(500)) as folderPath,
+        user_id as userId
+      FROM folders
+      union all
+      select
+      	fh.targetfolderid,
+        f.folder_id as folderId,
+        cast(fh.title || f.title as varchar(500)) as title,
+        f.parent_folder as parentFolder,
+        cast(f.storage_name || '/' || fh.folderPath as varchar(500)) as folderPath,
+        f.user_id as userId
+      from folders f
+      inner join folderHierarchy fh
+        on f.folder_id = fh.parentFolder
+    )
+    select targetfolderid as folder_id, folderPath as folder_path
+    from folderHierarchy
+	where targetFolderId in (${Prisma.join(foldersIds)})
+		and userid = ${userId}
+		and parentfolder is null; 
+    `;
+  }
+
   private async getFolderDescendants(
     folderId: number,
     userId: number,
@@ -44,8 +83,7 @@ export class FolderService {
           parent_folder,
           storage_name
         FROM folders
-        WHERE folder_id = ${folderId}
-          AND user_id = ${userId}
+        WHERE folder_id = ${folderId} AND user_id = ${userId}
         UNION ALL
         SELECT
           f.folder_id,
@@ -65,7 +103,7 @@ export class FolderService {
     userId: number,
   ): Promise<FolderHierarchy[]> {
     return await this.prisma.$queryRaw<FolderHierarchy[]>`
-    with recursive carpetas_hijas as(
+    with recursive folderAncestors as(
       SELECT 
         folder_id,
         title,
@@ -80,10 +118,10 @@ export class FolderService {
         f.parent_folder,
         f.storage_name
       from folders f
-      inner join carpetas_hijas ch
-        on  f.folder_id = ch.parent_folder
+      inner join folderAncestors fa
+        on  f.folder_id = fa.parent_folder
     )
-    select * from carpetas_hijas;
+    select * from folderAncestors;
     `;
   }
 
@@ -106,7 +144,17 @@ export class FolderService {
       where: { folderId, userId: credentials.userId },
       select: {
         title: true,
-        files: true,
+        files: {
+          select: {
+            fileId: true,
+            name: true,
+            mimeType: true,
+            size: true,
+            uploadedAt: true,
+            updatedAt: true,
+            isFavorite: true,
+          },
+        },
         children: true,
         parent: true,
         storageName: true,
@@ -118,9 +166,23 @@ export class FolderService {
       throw new BadRequestException('No hay nada para mostrar.');
     }
 
-    return {
-      folder,
-    };
+    const { files, ...folderData } = folder;
+
+    const filesData: File[] = [];
+
+    files.map(({ size, ...data }) => {
+      const sizeSerialized = size.toString();
+
+      filesData;
+      filesData.push({
+        ...data,
+        sizeSerialized,
+      });
+    });
+
+    const data = { ...folderData, filesData };
+
+    return data;
   }
 
   async getFavoriteFolders(credentials: Credentials) {
@@ -288,6 +350,72 @@ export class FolderService {
     };
   }
 
+  async deleteMultipleFolders(foldersIds: number[], credentials: Credentials) {
+    const user = await this.prisma.user.findUnique({
+      where: { userId: credentials.userId },
+      select: { userId: true },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException(
+        'No hay una sesión activa, porfavor inicia sesión.',
+      );
+    }
+
+    const folderExists = await this.prisma.folder.findMany({
+      where: { folderId: { in: foldersIds }, userId: credentials.userId },
+      select: { folderId: true, storageName: true },
+    });
+
+    if (!folderExists) {
+      throw new NotFoundException(
+        'Algún folder que intenta borrar ya fue borrado o no existe.',
+      );
+    }
+
+    const getFolders = await this.getFolderPathsForTrashBin(
+      foldersIds,
+      credentials.userId,
+    );
+
+    if (!getFolders) {
+      throw new NotFoundException(
+        'Los folders que intenta borrar no éxisten o no están en el basurero.',
+      );
+    }
+
+    let directoryDeleted: DirectoryStatus[] = [];
+
+    try {
+      getFolders.map(async ({ folderId, folderPath }) => {
+        await fs.rmdir(folderPath, { recursive: true });
+        directoryDeleted.push({
+          folderId,
+          isDeleted: true,
+        });
+      });
+
+      await this.prisma.$transaction([
+        this.prisma.folder.deleteMany({
+          where: {
+            userId: credentials.userId,
+            folderId: { in: foldersIds },
+            isDeleted: true,
+          },
+        }),
+
+        this.prisma.user.update({
+          where: { userId: credentials.userId },
+          data: {},
+        }),
+      ]);
+
+      return {
+        message: 'Se han vacíado la papelera de reciclaje con éxito',
+      };
+    } catch (error) {}
+  }
+
   async addToFavorite(folderId: number, credentials: Credentials) {
     const folderExists = await this.prisma.folder.findUnique({
       where: { folderId, userId: credentials.userId },
@@ -417,7 +545,7 @@ export class FolderService {
           data: {
             user: {
               update: {
-                storageLimit: {
+                currentStorage: {
                   decrement: 4096n,
                 },
               },

@@ -187,13 +187,13 @@ export class AuthService {
         user: { connect: { userId: createdUser.userId } },
       },
     });
+    const frontendApiKey = process.env.FRONTEND_URL;
 
-    const linkToVerifyEmail = `${process.env.FRONTEND_URL}/verify-email?token=${encodeURIComponent(verificationToken)}`;
+    const linkToVerifyEmail = `${frontendApiKey}/auth/verify-email?token=${encodeURIComponent(verificationToken)}`;
 
     this.mail.welcomeEmail(createdUser, linkToVerifyEmail);
 
     return {
-      url: `http://192.168.0.21:3001/auth/verify-email?token=${encodeURIComponent(verificationToken)}`,
       message: 'Cuenta creada exitosamente. Por favor checa tu email.',
     };
   }

@@ -22,3 +22,13 @@ export type ChildrenFolders = {
   uuid: string;
   parentId: number | null;
 };
+
+export type FolderPathsForTrashBin = {
+  folderId: number;
+  folderPath: string;
+};
+
+export interface DirectoryStatus {
+  folderId: number;
+  isDeleted: boolean;
+}

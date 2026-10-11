@@ -17,6 +17,14 @@ async function bootstrap() {
       whitelist: true,
     }),
   );
+
+  app.enableCors({
+    origin: ['http://192.168.1.12:3000'],
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true,
+    allowedHeaders: 'Content-Type, Accept, Authorization',
+  });
+
   await app.listen(PORT);
 }
 bootstrap();

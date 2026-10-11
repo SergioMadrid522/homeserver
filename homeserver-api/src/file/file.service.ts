@@ -13,6 +13,7 @@ import * as crypto from 'crypto';
 import type { Metadata } from './types/metadata.type';
 import type { Folder } from './types/folders-path.type';
 import path from 'path';
+import { DeleteFilesQueryParamsDto } from './DTO/delete-files-query-params.dto';
 
 @Injectable()
 export class FileService {
@@ -60,6 +61,40 @@ export class FileService {
       `;
   }
 
+  private async getFolderPaths(
+    folderId: number,
+    userId: number,
+  ): Promise<Folder[]> {
+    return this.prisma.$queryRaw<Folder[]>`
+      with recursive folderHierarchy as(
+        SELECT 
+          folder_id as targetFolderId,
+          folder_id as folderId,
+          cast(title as varchar(500)) as title,
+          parent_folder as parentFolder,
+          cast(storage_name as varchar(500)) as folderPath,
+          user_id as userId
+        FROM folders
+        union all
+        select
+          fh.targetfolderid,
+          f.folder_id as folderId,
+          cast(fh.title || f.title as varchar(500)) as title,
+          f.parent_folder as parentFolder,
+          cast(f.storage_name || '/' || fh.folderPath as varchar(500)) as folderPath,
+          f.user_id as userId
+        from folders f
+        inner join folderHierarchy fh
+          on f.folder_id = fh.parentFolder
+      )
+      select targetfolderid as id, folderPath as path
+      from folderHierarchy
+      where targetFolderId in (${folderId})
+      and userid = ${userId}
+      and parentfolder is null; 
+      `;
+  }
+
   private async validateUserAndFolder(
     folderId: number,
     credentials: Credentials,
@@ -78,6 +113,35 @@ export class FileService {
 
     const folderExists = await this.prisma.folder.findUnique({
       where: { folderId, userId: credentials.userId },
+      select: { folderId: true },
+    });
+
+    if (!folderExists) {
+      return {
+        code: 404,
+        message: 'El folder al que intenta acceder no existe.',
+      };
+    }
+  }
+
+  private async validateUserAndFolders(
+    folderIds: number[],
+    credentials: Credentials,
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: { userId: credentials.userId },
+      select: { userId: true },
+    });
+
+    if (!user) {
+      return {
+        code: 401,
+        message: 'Por favor inicie sesión.',
+      };
+    }
+
+    const folderExists = await this.prisma.folder.findMany({
+      where: { folderId: { in: folderIds }, userId: credentials.userId },
       select: { folderId: true },
     });
 
@@ -151,15 +215,16 @@ export class FileService {
 
     let writeStream;
     //const uploadFileFlag: UploadFileFlag[] = [{ flag: false, name: '' }];
+    let sizeAcum: bigint = 0n;
 
     try {
       fullPath.map((path) => {
-        metadata.map(({ name, buffer }) => {
+        metadata.map(({ name, buffer, size }) => {
           // uploadFileFlag.shift();
 
           writeStream = fs.createWriteStream(path);
           writeStream.write(buffer);
-
+          sizeAcum += BigInt(size);
           /* uploadFileFlag.push({
             flag: true,
             name,
@@ -179,19 +244,51 @@ export class FileService {
       metadata.map(async (data) => {
         const { buffer, ...metadata } = data;
 
-        await this.prisma.file.create({
-          data: {
-            ...metadata,
-            folderId,
-            userId: credentials.userId,
-          },
-        });
+        await this.prisma.$transaction([
+          this.prisma.file.create({
+            data: {
+              ...metadata,
+              folderId,
+              userId: credentials.userId,
+            },
+          }),
+          this.prisma.user.update({
+            where: { userId: credentials.userId },
+            data: {
+              currentStorage: { increment: sizeAcum },
+              storageLimit: { decrement: sizeAcum },
+            },
+          }),
+        ]);
       });
 
       return {
         mensaje: 'Se han subido los archivos exitosamente.',
       };
     } catch (error: any) {
+      /* if (
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        error.code === 'EEXIST'
+      ) {
+        const filesInBd = await this.prisma.file.findMany({
+          where: { folderId, userId: credentials.userId },
+          select: { name: true },
+        });
+
+        let filesNames = new Set(filesInBd.map((file) => file.name));
+
+        let fileUploaded = files.map((f) => f.originalname);
+        let counter: number = 1;
+
+        fileUploaded.map((fileName) => {
+          while (filesNames.has(fileName)) {
+            fileUploaded = `${fileName} (${counter})`;
+            counter++;
+          }
+        });
+      } */
       /* uploadFileFlag.find(
         (file) =>
           false === file.flag &&
@@ -374,6 +471,93 @@ export class FileService {
 
     return {
       message: 'Se ha borrado con éxito',
+    };
+  }
+
+  async deleteFiles(
+    query: DeleteFilesQueryParamsDto,
+    credentials: Credentials,
+  ) {
+    const folderIds: number[] = [];
+
+    const splitFolderIds = query.folderIds.split(',');
+
+    splitFolderIds.forEach((id) => {
+      folderIds.push(Number(id));
+    });
+
+    const validation = await this.validateUserAndFolders(
+      folderIds,
+      credentials,
+    );
+
+    if (validation?.code === 401) {
+      throw new UnauthorizedException(validation?.message);
+    }
+
+    if (validation?.code === 404) {
+      throw new NotFoundException(validation?.message);
+    }
+
+    const filesIds: number[] = [];
+
+    const ids = query.fileIds.split(',');
+
+    ids.forEach((id) => {
+      filesIds.push(Number(id));
+    });
+
+    const filesExist = await this.prisma.file.findMany({
+      where: { fileId: { in: filesIds } },
+      select: {
+        fileId: true,
+        isDeleted: true,
+        storageName: true,
+        folder: { select: { storageName: true } },
+      },
+    });
+
+    if (!filesExist) {
+      throw new NotFoundException('El archivo que intenta borrar no existe.');
+    }
+
+    const folderPromises = folderIds.map(async (folderId) => {
+      return await this.getFolderPaths(folderId, credentials.userId);
+    });
+
+    const resolvedFolders = await Promise.all(folderPromises);
+
+    const folders: Folder[] = resolvedFolders.flat();
+
+    const user = await this.prisma.user.findUnique({
+      where: { userId: credentials.userId },
+      select: { userStorageId: true },
+    });
+
+    const __dirname: string[] = [];
+
+    folders.forEach((f) => {
+      __dirname.push(
+        path.join(
+          this.baseDisk,
+          user?.userStorageId!,
+          f.path,
+          //filesExist.storageName,
+        ),
+      );
+    });
+
+    const fullPath: string[] = [];
+
+    filesExist.map(({ storageName }) => {
+      console.log(storageName);
+    });
+
+    return {
+      message: 'Se ha borrado con éxito',
+      folders,
+      __dirname,
+      filesExist,
     };
   }
 }
