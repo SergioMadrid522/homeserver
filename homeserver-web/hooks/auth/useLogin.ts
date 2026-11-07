@@ -3,8 +3,10 @@ import type { LoginForm } from "./types";
 import { LoginSchema } from "./schemas/login.schema";
 import toast from "react-hot-toast";
 import { AUTH_ENDPOINTS } from "@/config/auth";
+import { useState } from "react";
 
 export function useLogin() {
+  const [success, setSuccess] = useState<boolean>(false);
   const { register, handleSubmit, reset } = useForm<LoginForm>({
     defaultValues: {
       email: "",
@@ -20,6 +22,7 @@ export function useLogin() {
       toast.error(formatted);
       return;
     }
+
     try {
       const res = await fetch(AUTH_ENDPOINTS.login, {
         method: "POST",
@@ -31,17 +34,21 @@ export function useLogin() {
       const response = await res.json();
 
       if (!res.ok) {
+        setSuccess(false);
         toast.error(response.message);
         return;
       }
 
+      setSuccess(true);
       toast.success(response.message);
       reset();
     } catch (error: any) {
       console.log(error);
     }
   };
+
   return {
+    success,
     register,
     handleSubmit,
     onSubmit,

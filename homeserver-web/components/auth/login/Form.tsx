@@ -3,9 +3,22 @@
 import { useLogin } from "@/hooks/auth/useLogin";
 import { Titles } from "../Titles";
 import { Options } from "../Options";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export function Form() {
-  const { register, handleSubmit, onSubmit } = useLogin();
+  const router = useRouter();
+  const { success, register, handleSubmit, onSubmit } = useLogin();
+
+  useEffect(() => {
+    if (!success) return;
+
+    const timeout = setTimeout(() => {
+      router.replace("/home");
+    }, 3000);
+
+    return () => clearTimeout(timeout);
+  }, [router, success]);
 
   return (
     <form
