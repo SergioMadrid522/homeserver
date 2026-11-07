@@ -135,7 +135,7 @@ export class AuthService {
       role: registeredUser.role,
     });
 
-    setAuthCookie(response, token);
+    await setAuthCookie(response, token);
 
     return {
       success: true,
@@ -191,7 +191,7 @@ export class AuthService {
 
     const linkToVerifyEmail = `${frontendApiKey}/auth/verify-email?token=${encodeURIComponent(verificationToken)}`;
 
-    this.mail.welcomeEmail(createdUser, linkToVerifyEmail);
+    await this.mail.welcomeEmail(createdUser, linkToVerifyEmail);
 
     return {
       message: 'Cuenta creada exitosamente. Por favor checa tu email.',
@@ -350,7 +350,6 @@ export class AuthService {
 
   async verifyEmail(token: string) {
     let payload: { email?: string };
-
     try {
       payload = await this.jwtService.verifyAsync(token, {
         secret: process.env.EMAIL_VERIFICATION_SECRET,
@@ -465,7 +464,7 @@ export class AuthService {
       data: { passwordHash },
     });
 
-    this.mail.resetPasswordMail(credentials.email);
+    await this.mail.resetPasswordMail(credentials.email);
 
     return {
       message: 'La contraseña se ha cambiado con éxito.',

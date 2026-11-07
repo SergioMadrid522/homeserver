@@ -9,5 +9,6 @@ export const AUTH_ENDPOINTS = {
   singup: `${AUTH_API_URL}/signup`,
   logout: `${AUTH_API_URL}/logout`,
   forgotPassword: `${AUTH_API_URL}/forgot-password`,
+  validateEmail: `${AUTH_API_URL}/verify-email`,
   verifyResetCode: `${AUTH_API_URL}/verify-reset-code`,
 };

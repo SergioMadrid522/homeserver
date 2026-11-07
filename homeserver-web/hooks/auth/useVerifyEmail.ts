@@ -1,55 +1,52 @@
-import { SubmitHandler, useForm } from "react-hook-form";
-import type { VerifyResetCodeForm } from "./types";
-import { VerifyResetCodeSchema } from "./schemas/verify-reset-code.schema";
 import toast from "react-hot-toast";
 import { AUTH_ENDPOINTS } from "@/config/auth";
+import { useCallback, useState } from "react";
 
-export function useVerifyResetCode() {
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { isSubmitting },
-  } = useForm<VerifyResetCodeForm>({
-    defaultValues: {
-      code: "",
-    },
-  });
+export function useVerifyEmail() {
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [succesful, setSuccesful] = useState(false);
 
-  const onSubmit: SubmitHandler<VerifyResetCodeForm> = async (data) => {
-    const result = VerifyResetCodeSchema.safeParse(data);
-
-    if (!result.success) {
-      const formatted = result.error.issues[0].message;
-      toast.error(formatted);
+  const validateEmail = useCallback(async (token: string) => {
+    if (!token) {
+      toast.error("No existe ningún token");
       return;
     }
 
     try {
-      const res = await fetch(AUTH_ENDPOINTS.verifyResetCode, {
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(data),
-      });
+      setLoading(true);
+
+      const res = await fetch(
+        `${AUTH_ENDPOINTS.validateEmail}?token=${token}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+        },
+      );
 
       const response = await res.json();
 
       if (!res.ok) {
+        setSuccesful(false);
+        setError(response.mensaje);
         toast.error(response.message);
         return;
       }
-
+      setSuccesful(true);
       toast.success(response.message);
-      reset();
-    } catch (error) {}
-
-    reset();
-  };
+    } catch (error) {
+      setSuccesful(false);
+      setError(error.message || "No se pudo conectar con el servidor.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   return {
-    isSubmitting,
-    register,
-    handleSubmit,
-    onSubmit,
+    loading,
+    error,
+    succesful,
+    validateEmail,
   };
 }

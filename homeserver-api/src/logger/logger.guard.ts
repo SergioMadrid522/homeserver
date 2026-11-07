@@ -5,8 +5,8 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { request } from 'express';
-import { Observable } from 'rxjs';
+/* import { request } from 'express';
+import { Observable } from 'rxjs'; */
 import { PrismaService } from 'src/prisma/prisma.service';
 import { verifyJwt } from 'src/setCookie/jwt';
 
