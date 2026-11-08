@@ -4,31 +4,31 @@ import * as jose from "jose";
 export async function proxy(request: NextRequest) {
   const sessionCookie = request.cookies.get("sessionCookie");
   const currentPath = request.nextUrl.pathname;
-  const isProtectedRoute = currentPath === "/home";
-  const tokenJWT = process.env.JWT_SECRET;
-
-  if (!tokenJWT) {
-    throw new Error("JWT_SECRET is not defined");
-  }
+  const isProtectedRoute =
+    currentPath === "/home" || currentPath.startsWith("/home/");
 
   if (!isProtectedRoute) {
     return NextResponse.next();
   }
 
-  if (!sessionCookie?.value) {
+  const tokenJWT = process.env.JWT_SECRET;
+
+  if (!tokenJWT || !sessionCookie?.value) {
     return NextResponse.redirect(new URL("/auth/login", request.url));
   }
 
   try {
     const secret = new TextEncoder().encode(tokenJWT);
 
-    const { payload } = await jose.jwtVerify(sessionCookie.value, secret);
+    const { payload } = await jose.jwtVerify(sessionCookie.value, secret, {
+      algorithms: ["HS256"],
+    });
 
-    if (!payload.token) {
-      return NextResponse.redirect(new URL("/", request.url));
+    if (!payload.sub || !payload.email || !payload.role) {
+      throw new Error("Invalid JWT payload");
     }
 
-    if (isProtectedRoute) {
+    if (!isProtectedRoute) {
       const response = NextResponse.next();
       response.cookies.delete("sessionCookie");
       return response;
@@ -37,7 +37,6 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   } catch (error) {
     console.error(error);
-
     const response = NextResponse.redirect(new URL("/", request.url));
     response.cookies.delete("sessionCookie");
 
