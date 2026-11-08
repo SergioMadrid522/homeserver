@@ -15,7 +15,7 @@ export function Form() {
 
     const timeout = setTimeout(() => {
       router.replace("/home");
-    }, 3000);
+    }, 1000);
 
     return () => clearTimeout(timeout);
   }, [router, success]);
